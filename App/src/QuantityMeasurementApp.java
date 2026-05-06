@@ -35,6 +35,14 @@ class QuantityLength {
         this.unit = unit;
     }
 
+    public double getValue() {
+        return value;
+    }
+
+    public LengthUnit getUnit() {
+        return unit;
+    }
+
     private double toBaseUnit() {
         return value * unit.getConversionFactor();
     }
@@ -50,19 +58,41 @@ class QuantityLength {
         return new QuantityLength(convertedValue, targetUnit);
     }
 
-    public static double convert(double value, LengthUnit sourceUnit, LengthUnit targetUnit) {
+    public QuantityLength add(QuantityLength other) {
 
-        if (!Double.isFinite(value)) {
-            throw new IllegalArgumentException("Invalid value");
+        if (other == null) {
+            throw new IllegalArgumentException("Second operand cannot be null");
         }
 
-        if (sourceUnit == null || targetUnit == null) {
-            throw new IllegalArgumentException("Unit cannot be null");
+        double sumInBase =
+                this.toBaseUnit() + other.toBaseUnit();
+
+        double resultValue =
+                sumInBase / this.unit.getConversionFactor();
+
+        return new QuantityLength(resultValue, this.unit);
+    }
+
+    public static QuantityLength add(
+            QuantityLength q1,
+            QuantityLength q2,
+            LengthUnit targetUnit) {
+
+        if (q1 == null || q2 == null) {
+            throw new IllegalArgumentException("Operands cannot be null");
         }
 
-        double baseValue = value * sourceUnit.getConversionFactor();
+        if (targetUnit == null) {
+            throw new IllegalArgumentException("Target unit cannot be null");
+        }
 
-        return baseValue / targetUnit.getConversionFactor();
+        double sumInBase =
+                q1.toBaseUnit() + q2.toBaseUnit();
+
+        double resultValue =
+                sumInBase / targetUnit.getConversionFactor();
+
+        return new QuantityLength(resultValue, targetUnit);
     }
 
     @Override
@@ -78,77 +108,66 @@ class QuantityLength {
 
         QuantityLength quantity = (QuantityLength) obj;
 
-        return Double.compare(this.toBaseUnit(), quantity.toBaseUnit()) == 0;
+        return Double.compare(
+                this.toBaseUnit(),
+                quantity.toBaseUnit()) == 0;
     }
 
     @Override
     public String toString() {
-        return value + " " + unit;
+        return "Quantity(" + value + ", " + unit + ")";
     }
 }
 
 public class QuantityMeasurementApp {
 
-    public static void demonstrateLengthConversion(
-            double value,
-            LengthUnit fromUnit,
-            LengthUnit toUnit) {
-
-        double result = QuantityLength.convert(value, fromUnit, toUnit);
-
-        System.out.println(
-                "Input: convert(" + value + ", " + fromUnit + ", " + toUnit + ") → Output: " + result);
-    }
-
-    public static void demonstrateLengthConversion(
-            QuantityLength quantity,
-            LengthUnit targetUnit) {
-
-        QuantityLength converted = quantity.convertTo(targetUnit);
-
-        System.out.println(
-                "Input: " + quantity + " → Output: " + converted);
-    }
-
-    public static void demonstrateLengthEquality(
+    public static void demonstrateAddition(
             QuantityLength q1,
             QuantityLength q2) {
 
-        System.out.println(
-                "Input: " + q1 + " and " + q2);
+        QuantityLength result = q1.add(q2);
 
         System.out.println(
-                "Output: Equal (" + q1.equals(q2) + ")");
-    }
+                "Input: add(" + q1 + ", " + q2 + ")");
 
-    public static void demonstrateLengthComparison(
-            double value1,
-            LengthUnit unit1,
-            double value2,
-            LengthUnit unit2) {
+        System.out.println(
+                "Output: " + result);
 
-        QuantityLength q1 = new QuantityLength(value1, unit1);
-
-        QuantityLength q2 = new QuantityLength(value2, unit2);
-
-        demonstrateLengthEquality(q1, q2);
+        System.out.println();
     }
 
     public static void main(String[] args) {
 
-        demonstrateLengthConversion(1.0, LengthUnit.FEET, LengthUnit.INCHES);
+        demonstrateAddition(
+                new QuantityLength(1.0, LengthUnit.FEET),
+                new QuantityLength(2.0, LengthUnit.FEET));
 
-        demonstrateLengthConversion(3.0, LengthUnit.YARDS, LengthUnit.FEET);
+        demonstrateAddition(
+                new QuantityLength(1.0, LengthUnit.FEET),
+                new QuantityLength(12.0, LengthUnit.INCHES));
 
-        demonstrateLengthConversion(36.0, LengthUnit.INCHES, LengthUnit.YARDS);
+        demonstrateAddition(
+                new QuantityLength(12.0, LengthUnit.INCHES),
+                new QuantityLength(1.0, LengthUnit.FEET));
 
-        demonstrateLengthConversion(1.0, LengthUnit.CENTIMETERS, LengthUnit.INCHES);
+        demonstrateAddition(
+                new QuantityLength(1.0, LengthUnit.YARDS),
+                new QuantityLength(3.0, LengthUnit.FEET));
 
-        demonstrateLengthConversion(0.0, LengthUnit.FEET, LengthUnit.INCHES);
+        demonstrateAddition(
+                new QuantityLength(36.0, LengthUnit.INCHES),
+                new QuantityLength(1.0, LengthUnit.YARDS));
 
-        System.out.println();
+        demonstrateAddition(
+                new QuantityLength(2.54, LengthUnit.CENTIMETERS),
+                new QuantityLength(1.0, LengthUnit.INCHES));
 
-        demonstrateLengthComparison(1.0, LengthUnit.FEET,
-                12.0, LengthUnit.INCHES);
+        demonstrateAddition(
+                new QuantityLength(5.0, LengthUnit.FEET),
+                new QuantityLength(0.0, LengthUnit.INCHES));
+
+        demonstrateAddition(
+                new QuantityLength(5.0, LengthUnit.FEET),
+                new QuantityLength(-2.0, LengthUnit.FEET));
     }
 }
