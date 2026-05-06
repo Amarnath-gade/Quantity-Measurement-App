@@ -140,6 +140,21 @@ class Quantity<U extends IMeasurable> {
         return unit.convertToBaseUnit(value);
     }
 
+    private void validateQuantity(Quantity<U> other) {
+
+        if (other == null) {
+            throw new IllegalArgumentException("Quantity cannot be null");
+        }
+
+        if (this.unit.getClass() != other.unit.getClass()) {
+            throw new IllegalArgumentException("Cross-category operation not allowed");
+        }
+    }
+
+    private double round(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
     public Quantity<U> convertTo(U targetUnit) {
 
         if (targetUnit == null) {
@@ -151,14 +166,12 @@ class Quantity<U extends IMeasurable> {
         double convertedValue =
                 targetUnit.convertFromBaseUnit(baseValue);
 
-        return new Quantity<>(convertedValue, targetUnit);
+        return new Quantity<>(round(convertedValue), targetUnit);
     }
 
     public Quantity<U> add(Quantity<U> other) {
 
-        if (other == null) {
-            throw new IllegalArgumentException("Second operand cannot be null");
-        }
+        validateQuantity(other);
 
         return add(other, this.unit);
     }
@@ -167,21 +180,58 @@ class Quantity<U extends IMeasurable> {
             Quantity<U> other,
             U targetUnit) {
 
-        if (other == null) {
-            throw new IllegalArgumentException("Second operand cannot be null");
-        }
+        validateQuantity(other);
 
         if (targetUnit == null) {
             throw new IllegalArgumentException("Target unit cannot be null");
         }
 
-        double totalBaseValue =
+        double result =
                 this.toBaseUnit() + other.toBaseUnit();
 
-        double resultValue =
-                targetUnit.convertFromBaseUnit(totalBaseValue);
+        double converted =
+                targetUnit.convertFromBaseUnit(result);
 
-        return new Quantity<>(resultValue, targetUnit);
+        return new Quantity<>(round(converted), targetUnit);
+    }
+
+    public Quantity<U> subtract(Quantity<U> other) {
+
+        validateQuantity(other);
+
+        return subtract(other, this.unit);
+    }
+
+    public Quantity<U> subtract(
+            Quantity<U> other,
+            U targetUnit) {
+
+        validateQuantity(other);
+
+        if (targetUnit == null) {
+            throw new IllegalArgumentException("Target unit cannot be null");
+        }
+
+        double result =
+                this.toBaseUnit() - other.toBaseUnit();
+
+        double converted =
+                targetUnit.convertFromBaseUnit(result);
+
+        return new Quantity<>(round(converted), targetUnit);
+    }
+
+    public double divide(Quantity<U> other) {
+
+        validateQuantity(other);
+
+        double divisor = other.toBaseUnit();
+
+        if (Double.compare(divisor, 0.0) == 0) {
+            throw new ArithmeticException("Division by zero");
+        }
+
+        return this.toBaseUnit() / divisor;
     }
 
     @Override
@@ -219,89 +269,83 @@ class Quantity<U extends IMeasurable> {
 
 public class QuantityMeasurementApp {
 
-    public static <U extends IMeasurable> void demonstrateEquality(
-            Quantity<U> q1,
-            Quantity<U> q2) {
-
-        System.out.println(
-                "Input: " + q1 + ".equals(" + q2 + ")");
-
-        System.out.println(
-                "Output: " + q1.equals(q2));
-
-        System.out.println();
-    }
-
-    public static <U extends IMeasurable> void demonstrateConversion(
-            Quantity<U> quantity,
-            U targetUnit) {
-
-        System.out.println(
-                "Input: " + quantity + ".convertTo(" + targetUnit + ")");
-
-        System.out.println(
-                "Output: " + quantity.convertTo(targetUnit));
-
-        System.out.println();
-    }
-
-    public static <U extends IMeasurable> void demonstrateAddition(
+    public static <U extends IMeasurable> void demonstrateSubtraction(
             Quantity<U> q1,
             Quantity<U> q2,
             U targetUnit) {
 
         System.out.println(
-                "Input: " + q1 + ".add(" + q2 + ", " + targetUnit + ")");
+                "Input: " + q1 + ".subtract(" + q2 + ", " + targetUnit + ")");
 
         System.out.println(
-                "Output: " + q1.add(q2, targetUnit));
+                "Output: " + q1.subtract(q2, targetUnit));
+
+        System.out.println();
+    }
+
+    public static <U extends IMeasurable> void demonstrateDivision(
+            Quantity<U> q1,
+            Quantity<U> q2) {
+
+        System.out.println(
+                "Input: " + q1 + ".divide(" + q2 + ")");
+
+        System.out.println(
+                "Output: " + q1.divide(q2));
 
         System.out.println();
     }
 
     public static void main(String[] args) {
 
-        Quantity<VolumeUnit> volume1 =
-                new Quantity<>(1.0, VolumeUnit.LITRE);
+        Quantity<LengthUnit> feet =
+                new Quantity<>(10.0, LengthUnit.FEET);
 
-        Quantity<VolumeUnit> volume2 =
-                new Quantity<>(1000.0, VolumeUnit.MILLILITRE);
+        Quantity<LengthUnit> inches =
+                new Quantity<>(6.0, LengthUnit.INCHES);
 
-        Quantity<VolumeUnit> volume3 =
-                new Quantity<>(1.0, VolumeUnit.GALLON);
+        demonstrateSubtraction(
+                feet,
+                inches,
+                LengthUnit.FEET);
 
-        demonstrateEquality(volume1, volume2);
+        demonstrateSubtraction(
+                feet,
+                inches,
+                LengthUnit.INCHES);
 
-        demonstrateConversion(volume1, VolumeUnit.MILLILITRE);
+        demonstrateDivision(
+                new Quantity<>(24.0, LengthUnit.INCHES),
+                new Quantity<>(2.0, LengthUnit.FEET));
 
-        demonstrateConversion(volume3, VolumeUnit.LITRE);
+        Quantity<WeightUnit> kilogram =
+                new Quantity<>(10.0, WeightUnit.KILOGRAM);
 
-        demonstrateAddition(volume1, volume2, VolumeUnit.LITRE);
+        Quantity<WeightUnit> gram =
+                new Quantity<>(5000.0, WeightUnit.GRAM);
 
-        demonstrateAddition(volume1, volume2, VolumeUnit.MILLILITRE);
+        demonstrateSubtraction(
+                kilogram,
+                gram,
+                WeightUnit.KILOGRAM);
 
-        demonstrateAddition(volume3,
-                new Quantity<>(3.78541, VolumeUnit.LITRE),
-                VolumeUnit.GALLON);
+        demonstrateDivision(
+                kilogram,
+                new Quantity<>(5.0, WeightUnit.KILOGRAM));
 
-        Quantity<LengthUnit> length =
-                new Quantity<>(1.0, LengthUnit.FEET);
+        Quantity<VolumeUnit> litre =
+                new Quantity<>(5.0, VolumeUnit.LITRE);
 
-        Quantity<WeightUnit> weight =
-                new Quantity<>(1.0, WeightUnit.KILOGRAM);
+        Quantity<VolumeUnit> millilitre =
+                new Quantity<>(500.0, VolumeUnit.MILLILITRE);
 
-        System.out.println(
-                "Input: " + volume1 + ".equals(" + length + ")");
+        demonstrateSubtraction(
+                litre,
+                millilitre,
+                VolumeUnit.LITRE);
 
-        System.out.println(
-                "Output: " + volume1.equals(length));
-
-        System.out.println();
-
-        System.out.println(
-                "Input: " + volume1 + ".equals(" + weight + ")");
-
-        System.out.println(
-                "Output: " + volume1.equals(weight));
+        demonstrateDivision(
+                litre,
+                new Quantity<>(10.0, VolumeUnit.LITRE));
     }
 }
