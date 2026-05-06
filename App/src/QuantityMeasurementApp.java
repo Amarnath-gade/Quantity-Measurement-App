@@ -1,3 +1,5 @@
+import java.util.function.DoubleBinaryOperator;
+
 interface IMeasurable {
 
     double getConversionFactor();
@@ -114,6 +116,32 @@ class Quantity<U extends IMeasurable> {
     private final double value;
     private final U unit;
 
+    private enum ArithmeticOperation {
+
+        ADD((a, b) -> a + b),
+
+        SUBTRACT((a, b) -> a - b),
+
+        DIVIDE((a, b) -> {
+
+            if (Double.compare(b, 0.0) == 0) {
+                throw new ArithmeticException("Division by zero");
+            }
+
+            return a / b;
+        });
+
+        private final DoubleBinaryOperator operation;
+
+        ArithmeticOperation(DoubleBinaryOperator operation) {
+            this.operation = operation;
+        }
+
+        public double compute(double a, double b) {
+            return operation.applyAsDouble(a, b);
+        }
+    }
+
     public Quantity(double value, U unit) {
 
         if (!Double.isFinite(value)) {
@@ -140,38 +168,67 @@ class Quantity<U extends IMeasurable> {
         return unit.convertToBaseUnit(value);
     }
 
-    private void validateQuantity(Quantity<U> other) {
+    private void validateArithmeticOperands(
+            Quantity<U> other,
+            U targetUnit,
+            boolean targetUnitRequired) {
 
         if (other == null) {
             throw new IllegalArgumentException("Quantity cannot be null");
         }
 
         if (this.unit.getClass() != other.unit.getClass()) {
-            throw new IllegalArgumentException("Cross-category operation not allowed");
+            throw new IllegalArgumentException(
+                    "Cross-category operation not allowed");
+        }
+
+        if (!Double.isFinite(this.value)
+                || !Double.isFinite(other.value)) {
+
+            throw new IllegalArgumentException(
+                    "Values must be finite");
+        }
+
+        if (targetUnitRequired && targetUnit == null) {
+            throw new IllegalArgumentException(
+                    "Target unit cannot be null");
         }
     }
 
-    private double round(double value) {
+    private double performBaseArithmetic(
+            Quantity<U> other,
+            ArithmeticOperation operation) {
+
+        double thisBaseValue = this.toBaseUnit();
+
+        double otherBaseValue = other.toBaseUnit();
+
+        return operation.compute(
+                thisBaseValue,
+                otherBaseValue);
+    }
+
+    private double roundToTwoDecimals(double value) {
         return Math.round(value * 100.0) / 100.0;
     }
 
     public Quantity<U> convertTo(U targetUnit) {
 
         if (targetUnit == null) {
-            throw new IllegalArgumentException("Target unit cannot be null");
+            throw new IllegalArgumentException(
+                    "Target unit cannot be null");
         }
 
-        double baseValue = toBaseUnit();
-
         double convertedValue =
-                targetUnit.convertFromBaseUnit(baseValue);
+                targetUnit.convertFromBaseUnit(
+                        this.toBaseUnit());
 
-        return new Quantity<>(round(convertedValue), targetUnit);
+        return new Quantity<>(
+                roundToTwoDecimals(convertedValue),
+                targetUnit);
     }
 
     public Quantity<U> add(Quantity<U> other) {
-
-        validateQuantity(other);
 
         return add(other, this.unit);
     }
@@ -180,24 +237,25 @@ class Quantity<U extends IMeasurable> {
             Quantity<U> other,
             U targetUnit) {
 
-        validateQuantity(other);
-
-        if (targetUnit == null) {
-            throw new IllegalArgumentException("Target unit cannot be null");
-        }
+        validateArithmeticOperands(
+                other,
+                targetUnit,
+                true);
 
         double result =
-                this.toBaseUnit() + other.toBaseUnit();
+                performBaseArithmetic(
+                        other,
+                        ArithmeticOperation.ADD);
 
-        double converted =
+        double convertedResult =
                 targetUnit.convertFromBaseUnit(result);
 
-        return new Quantity<>(round(converted), targetUnit);
+        return new Quantity<>(
+                roundToTwoDecimals(convertedResult),
+                targetUnit);
     }
 
     public Quantity<U> subtract(Quantity<U> other) {
-
-        validateQuantity(other);
 
         return subtract(other, this.unit);
     }
@@ -206,32 +264,34 @@ class Quantity<U extends IMeasurable> {
             Quantity<U> other,
             U targetUnit) {
 
-        validateQuantity(other);
-
-        if (targetUnit == null) {
-            throw new IllegalArgumentException("Target unit cannot be null");
-        }
+        validateArithmeticOperands(
+                other,
+                targetUnit,
+                true);
 
         double result =
-                this.toBaseUnit() - other.toBaseUnit();
+                performBaseArithmetic(
+                        other,
+                        ArithmeticOperation.SUBTRACT);
 
-        double converted =
+        double convertedResult =
                 targetUnit.convertFromBaseUnit(result);
 
-        return new Quantity<>(round(converted), targetUnit);
+        return new Quantity<>(
+                roundToTwoDecimals(convertedResult),
+                targetUnit);
     }
 
     public double divide(Quantity<U> other) {
 
-        validateQuantity(other);
+        validateArithmeticOperands(
+                other,
+                null,
+                false);
 
-        double divisor = other.toBaseUnit();
-
-        if (Double.compare(divisor, 0.0) == 0) {
-            throw new ArithmeticException("Division by zero");
-        }
-
-        return this.toBaseUnit() / divisor;
+        return performBaseArithmetic(
+                other,
+                ArithmeticOperation.DIVIDE);
     }
 
     @Override
@@ -247,7 +307,9 @@ class Quantity<U extends IMeasurable> {
 
         Quantity<?> other = (Quantity<?>) obj;
 
-        if (this.unit.getClass() != other.unit.getClass()) {
+        if (this.unit.getClass()
+                != other.unit.getClass()) {
+
             return false;
         }
 
@@ -263,35 +325,64 @@ class Quantity<U extends IMeasurable> {
 
     @Override
     public String toString() {
-        return "Quantity(" + value + ", " + unit.getUnitName() + ")";
+        return "Quantity(" +
+                value +
+                ", " +
+                unit.getUnitName() +
+                ")";
     }
 }
 
 public class QuantityMeasurementApp {
 
-    public static <U extends IMeasurable> void demonstrateSubtraction(
+    public static <U extends IMeasurable>
+    void demonstrateAddition(
             Quantity<U> q1,
             Quantity<U> q2,
             U targetUnit) {
 
         System.out.println(
-                "Input: " + q1 + ".subtract(" + q2 + ", " + targetUnit + ")");
+                "Input: " + q1 +
+                        ".add(" + q2 +
+                        ", " + targetUnit + ")");
 
         System.out.println(
-                "Output: " + q1.subtract(q2, targetUnit));
+                "Output: " +
+                        q1.add(q2, targetUnit));
 
         System.out.println();
     }
 
-    public static <U extends IMeasurable> void demonstrateDivision(
+    public static <U extends IMeasurable>
+    void demonstrateSubtraction(
+            Quantity<U> q1,
+            Quantity<U> q2,
+            U targetUnit) {
+
+        System.out.println(
+                "Input: " + q1 +
+                        ".subtract(" + q2 +
+                        ", " + targetUnit + ")");
+
+        System.out.println(
+                "Output: " +
+                        q1.subtract(q2, targetUnit));
+
+        System.out.println();
+    }
+
+    public static <U extends IMeasurable>
+    void demonstrateDivision(
             Quantity<U> q1,
             Quantity<U> q2) {
 
         System.out.println(
-                "Input: " + q1 + ".divide(" + q2 + ")");
+                "Input: " + q1 +
+                        ".divide(" + q2 + ")");
 
         System.out.println(
-                "Output: " + q1.divide(q2));
+                "Output: " +
+                        q1.divide(q2));
 
         System.out.println();
     }
@@ -299,20 +390,20 @@ public class QuantityMeasurementApp {
     public static void main(String[] args) {
 
         Quantity<LengthUnit> feet =
-                new Quantity<>(10.0, LengthUnit.FEET);
+                new Quantity<>(1.0, LengthUnit.FEET);
 
         Quantity<LengthUnit> inches =
-                new Quantity<>(6.0, LengthUnit.INCHES);
+                new Quantity<>(12.0, LengthUnit.INCHES);
 
-        demonstrateSubtraction(
+        demonstrateAddition(
                 feet,
                 inches,
                 LengthUnit.FEET);
 
         demonstrateSubtraction(
-                feet,
-                inches,
-                LengthUnit.INCHES);
+                new Quantity<>(10.0, LengthUnit.FEET),
+                new Quantity<>(6.0, LengthUnit.INCHES),
+                LengthUnit.FEET);
 
         demonstrateDivision(
                 new Quantity<>(24.0, LengthUnit.INCHES),
@@ -323,6 +414,11 @@ public class QuantityMeasurementApp {
 
         Quantity<WeightUnit> gram =
                 new Quantity<>(5000.0, WeightUnit.GRAM);
+
+        demonstrateAddition(
+                kilogram,
+                gram,
+                WeightUnit.GRAM);
 
         demonstrateSubtraction(
                 kilogram,
@@ -337,15 +433,11 @@ public class QuantityMeasurementApp {
                 new Quantity<>(5.0, VolumeUnit.LITRE);
 
         Quantity<VolumeUnit> millilitre =
-                new Quantity<>(500.0, VolumeUnit.MILLILITRE);
+                new Quantity<>(2.0, VolumeUnit.LITRE);
 
         demonstrateSubtraction(
                 litre,
                 millilitre,
-                VolumeUnit.LITRE);
-
-        demonstrateDivision(
-                litre,
-                new Quantity<>(10.0, VolumeUnit.LITRE));
+                VolumeUnit.MILLILITRE);
     }
 }
