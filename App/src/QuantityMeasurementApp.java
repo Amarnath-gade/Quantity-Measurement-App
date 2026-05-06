@@ -76,6 +76,39 @@ enum WeightUnit implements IMeasurable {
     }
 }
 
+enum VolumeUnit implements IMeasurable {
+
+    LITRE(1.0),
+    MILLILITRE(0.001),
+    GALLON(3.78541);
+
+    private final double conversionFactor;
+
+    VolumeUnit(double conversionFactor) {
+        this.conversionFactor = conversionFactor;
+    }
+
+    @Override
+    public double getConversionFactor() {
+        return conversionFactor;
+    }
+
+    @Override
+    public double convertToBaseUnit(double value) {
+        return value * conversionFactor;
+    }
+
+    @Override
+    public double convertFromBaseUnit(double baseValue) {
+        return baseValue / conversionFactor;
+    }
+
+    @Override
+    public String getUnitName() {
+        return name();
+    }
+}
+
 class Quantity<U extends IMeasurable> {
 
     private final double value;
@@ -228,34 +261,47 @@ public class QuantityMeasurementApp {
 
     public static void main(String[] args) {
 
-        Quantity<LengthUnit> length1 =
+        Quantity<VolumeUnit> volume1 =
+                new Quantity<>(1.0, VolumeUnit.LITRE);
+
+        Quantity<VolumeUnit> volume2 =
+                new Quantity<>(1000.0, VolumeUnit.MILLILITRE);
+
+        Quantity<VolumeUnit> volume3 =
+                new Quantity<>(1.0, VolumeUnit.GALLON);
+
+        demonstrateEquality(volume1, volume2);
+
+        demonstrateConversion(volume1, VolumeUnit.MILLILITRE);
+
+        demonstrateConversion(volume3, VolumeUnit.LITRE);
+
+        demonstrateAddition(volume1, volume2, VolumeUnit.LITRE);
+
+        demonstrateAddition(volume1, volume2, VolumeUnit.MILLILITRE);
+
+        demonstrateAddition(volume3,
+                new Quantity<>(3.78541, VolumeUnit.LITRE),
+                VolumeUnit.GALLON);
+
+        Quantity<LengthUnit> length =
                 new Quantity<>(1.0, LengthUnit.FEET);
 
-        Quantity<LengthUnit> length2 =
-                new Quantity<>(12.0, LengthUnit.INCHES);
-
-        demonstrateEquality(length1, length2);
-
-        demonstrateConversion(length1, LengthUnit.INCHES);
-
-        demonstrateAddition(length1, length2, LengthUnit.FEET);
-
-        Quantity<WeightUnit> weight1 =
+        Quantity<WeightUnit> weight =
                 new Quantity<>(1.0, WeightUnit.KILOGRAM);
 
-        Quantity<WeightUnit> weight2 =
-                new Quantity<>(1000.0, WeightUnit.GRAM);
-
-        demonstrateEquality(weight1, weight2);
-
-        demonstrateConversion(weight1, WeightUnit.GRAM);
-
-        demonstrateAddition(weight1, weight2, WeightUnit.KILOGRAM);
+        System.out.println(
+                "Input: " + volume1 + ".equals(" + length + ")");
 
         System.out.println(
-                "Input: " + length1 + ".equals(" + weight1 + ")");
+                "Output: " + volume1.equals(length));
+
+        System.out.println();
 
         System.out.println(
-                "Output: " + length1.equals(weight1));
+                "Input: " + volume1 + ".equals(" + weight + ")");
+
+        System.out.println(
+                "Output: " + volume1.equals(weight));
     }
 }
