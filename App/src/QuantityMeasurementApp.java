@@ -47,15 +47,18 @@ class QuantityLength {
         return value * unit.getConversionFactor();
     }
 
-    public QuantityLength convertTo(LengthUnit targetUnit) {
+    private static QuantityLength addValues(
+            QuantityLength q1,
+            QuantityLength q2,
+            LengthUnit targetUnit) {
 
-        if (targetUnit == null) {
-            throw new IllegalArgumentException("Target unit cannot be null");
-        }
+        double sumInBase =
+                q1.toBaseUnit() + q2.toBaseUnit();
 
-        double convertedValue = toBaseUnit() / targetUnit.getConversionFactor();
+        double resultValue =
+                sumInBase / targetUnit.getConversionFactor();
 
-        return new QuantityLength(convertedValue, targetUnit);
+        return new QuantityLength(resultValue, targetUnit);
     }
 
     public QuantityLength add(QuantityLength other) {
@@ -64,13 +67,22 @@ class QuantityLength {
             throw new IllegalArgumentException("Second operand cannot be null");
         }
 
-        double sumInBase =
-                this.toBaseUnit() + other.toBaseUnit();
+        return addValues(this, other, this.unit);
+    }
 
-        double resultValue =
-                sumInBase / this.unit.getConversionFactor();
+    public QuantityLength add(
+            QuantityLength other,
+            LengthUnit targetUnit) {
 
-        return new QuantityLength(resultValue, this.unit);
+        if (other == null) {
+            throw new IllegalArgumentException("Second operand cannot be null");
+        }
+
+        if (targetUnit == null) {
+            throw new IllegalArgumentException("Target unit cannot be null");
+        }
+
+        return addValues(this, other, targetUnit);
     }
 
     public static QuantityLength add(
@@ -86,13 +98,7 @@ class QuantityLength {
             throw new IllegalArgumentException("Target unit cannot be null");
         }
 
-        double sumInBase =
-                q1.toBaseUnit() + q2.toBaseUnit();
-
-        double resultValue =
-                sumInBase / targetUnit.getConversionFactor();
-
-        return new QuantityLength(resultValue, targetUnit);
+        return addValues(q1, q2, targetUnit);
     }
 
     @Override
@@ -123,12 +129,14 @@ public class QuantityMeasurementApp {
 
     public static void demonstrateAddition(
             QuantityLength q1,
-            QuantityLength q2) {
+            QuantityLength q2,
+            LengthUnit targetUnit) {
 
-        QuantityLength result = q1.add(q2);
+        QuantityLength result =
+                QuantityLength.add(q1, q2, targetUnit);
 
         System.out.println(
-                "Input: add(" + q1 + ", " + q2 + ")");
+                "Input: add(" + q1 + ", " + q2 + ", " + targetUnit + ")");
 
         System.out.println(
                 "Output: " + result);
@@ -140,34 +148,42 @@ public class QuantityMeasurementApp {
 
         demonstrateAddition(
                 new QuantityLength(1.0, LengthUnit.FEET),
-                new QuantityLength(2.0, LengthUnit.FEET));
+                new QuantityLength(12.0, LengthUnit.INCHES),
+                LengthUnit.FEET);
 
         demonstrateAddition(
                 new QuantityLength(1.0, LengthUnit.FEET),
-                new QuantityLength(12.0, LengthUnit.INCHES));
+                new QuantityLength(12.0, LengthUnit.INCHES),
+                LengthUnit.INCHES);
 
         demonstrateAddition(
+                new QuantityLength(1.0, LengthUnit.FEET),
                 new QuantityLength(12.0, LengthUnit.INCHES),
-                new QuantityLength(1.0, LengthUnit.FEET));
+                LengthUnit.YARDS);
 
         demonstrateAddition(
                 new QuantityLength(1.0, LengthUnit.YARDS),
-                new QuantityLength(3.0, LengthUnit.FEET));
+                new QuantityLength(3.0, LengthUnit.FEET),
+                LengthUnit.YARDS);
 
         demonstrateAddition(
                 new QuantityLength(36.0, LengthUnit.INCHES),
-                new QuantityLength(1.0, LengthUnit.YARDS));
+                new QuantityLength(1.0, LengthUnit.YARDS),
+                LengthUnit.FEET);
 
         demonstrateAddition(
                 new QuantityLength(2.54, LengthUnit.CENTIMETERS),
-                new QuantityLength(1.0, LengthUnit.INCHES));
+                new QuantityLength(1.0, LengthUnit.INCHES),
+                LengthUnit.CENTIMETERS);
 
         demonstrateAddition(
                 new QuantityLength(5.0, LengthUnit.FEET),
-                new QuantityLength(0.0, LengthUnit.INCHES));
+                new QuantityLength(0.0, LengthUnit.INCHES),
+                LengthUnit.YARDS);
 
         demonstrateAddition(
                 new QuantityLength(5.0, LengthUnit.FEET),
-                new QuantityLength(-2.0, LengthUnit.FEET));
+                new QuantityLength(-2.0, LengthUnit.FEET),
+                LengthUnit.INCHES);
     }
 }
